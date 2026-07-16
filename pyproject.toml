@@ -1,0 +1,17 @@
+[project]
+name = "open-meteo-cloudcover"
+version = "2025.10.4"
+description = "Home Assistant integration: cloud-cover, weather and soil sensors from the Open-Meteo API"
+readme = "README.md"
+requires-python = ">=3.12"
+authors = [{ name = "Stephen Eaton" }]
+urls.Source = "https://github.com/madeinoz67/open-meteo-cloudcover"
+urls.Issues = "https://github.com/madeinoz67/open-meteo-cloudcover/issues"
+
+dependencies = []
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+testpaths = ["tests"]
+pythonpath = ["."]
