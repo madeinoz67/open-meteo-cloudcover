@@ -3,6 +3,7 @@ name = "open-meteo-cloudcover"
 version = "2026.7.1"
 description = "Home Assistant integration: cloud-cover, weather and soil sensors from the Open-Meteo API"
 readme = "README.md"
+license = { text = "MIT" }
 requires-python = ">=3.12"
 authors = [{ name = "Stephen Eaton" }]
 urls.Source = "https://github.com/madeinoz67/open-meteo-cloudcover"
