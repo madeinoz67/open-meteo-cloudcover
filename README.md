@@ -24,10 +24,15 @@ The integration creates sensors for each metric in multiple time formats:
   - Days 0-2 (Today, Tomorrow, Day 2) enabled by default
   - Days 3-7 disabled by default
 
-Each daily sensor includes:
-- Daily average value
+For **day-based** sensors, the reported value depends on the metric type:
+
+- **Cumulative metrics** (`Evapotranspiration`, `FAO Evapotranspiration`) report the **daily total** (mm/day), taken from Open-Meteo's authoritative `daily=` values (falling back to the sum of hourly values). This is the value irrigation controllers such as [HA Smart Irrigation](https://github.com/jeroenterheijdt/hass-smart-irrigation) expect.
+- **Instantaneous metrics** (`Cloud Cover`, `Soil Temperature`, `Soil Moisture`, `Direct Radiation`) report the **daily average**.
+
+Each daily sensor also includes:
 - Hourly forecast data for the day
-- Min/max/average values
+- Min / max / average values
+- A `total` attribute (cumulative metrics only)
 - Location metadata (latitude, longitude, timezone, elevation)
 
 Each hourly sensor includes:
@@ -50,7 +55,7 @@ Each hourly sensor includes:
 9. Restart Home Assistant
 10. Go to Settings → Devices & Services → Add Integration
 11. Search for "Open-Meteo CloudCover"
-12. Enter your location name and coordinates (or use defaults)
+12. Enter a location name and your coordinates (or use defaults)
 
 ### Manual Installation
 
@@ -59,30 +64,31 @@ Each hourly sensor includes:
 3. Restart Home Assistant
 4. Go to Settings → Devices & Services → Add Integration
 5. Search for "Open-Meteo CloudCover"
-6. Enter your location name and coordinates (or use defaults)
+6. Enter a location name and your coordinates (or use defaults)
 
 ## Configuration
 
 The integration uses a config flow for setup:
 
-1. **Latitude** - Defaults to your Home Assistant instance location
-2. **Longitude** - Defaults to your Home Assistant instance location
+1. **Name** - A friendly name for this location (used in the device name, e.g. "Home")
+2. **Latitude** - Defaults to your Home Assistant instance location
+3. **Longitude** - Defaults to your Home Assistant instance location
 
 You can simply click "Submit" without changing anything to use your Home Assistant's configured location.
 
 ## Data Updates
 
-The integration fetches data from the Open-Meteo API at hourly boundaries (XX:00:05). This alignment ensures fresh data is available at the start of each hour while respecting the API's free tier.
+The integration fetches data from the Open-Meteo API at hourly boundaries (XX:00:05). This alignment ensures fresh data is available at the start of each hour while respecting the API's free tier. The hourly cadence is fixed and not user-configurable.
 
 ## Sensors
 
 All sensors are grouped under a single device called "Open-Meteo CloudCover" for easy organization.
 
-**Total Sensors**: 342 sensors (45 enabled by default)
-- This Hour sensors: 9 (enabled)
-- Next Hour sensors: 9 (enabled)
-- Hourly sensors: 216 (24 hours × 9 metrics, disabled by default)
-- Daily sensors (Days 0-2): 27 (enabled)
+**Total Sensors**: 306 sensors (30 enabled by default)
+- This Hour sensors: 9 (6 enabled — Cloud Cover Low/Mid/High disabled)
+- Next Hour sensors: 9 (6 enabled)
+- Hourly sensors: 216 (24 hours × 9 metrics, all disabled by default)
+- Daily sensors (Days 0-2): 27 (18 enabled — Cloud Cover Low/Mid/High disabled)
 - Extended daily sensors (Days 3-7): 45 (disabled by default)
 
 **Disabled by Default**:
@@ -92,11 +98,13 @@ All sensors are grouped under a single device called "Open-Meteo CloudCover" for
 
 All disabled sensors can be enabled via the entity registry in Home Assistant.
 
-### Example Daily Sensor Attributes
+### Example Daily Sensor Attributes — instantaneous metric (Cloud Cover)
+
+The state is the daily average:
 
 ```yaml
-state: 45.5
-date: "2025-10-30"
+state: 45.5            # daily average
+date: "2026-07-16"
 day_offset: 0
 day_name: "Today"
 latitude: -33.375
@@ -104,14 +112,26 @@ longitude: 115.625
 timezone: "Australia/Perth"
 elevation: 3.0
 forecast_data:
-  "2025-10-30T00:00": 42
-  "2025-10-30T01:00": 43
-  "2025-10-30T02:00": 44
+  "2026-07-16T00:00": 42
+  "2026-07-16T01:00": 43
   # ... (hourly data for the day)
-  "2025-10-30T23:00": 48
+  "2026-07-16T23:00": 48
 min: 35
 max: 58
 avg: 45.5
+```
+
+### Example Daily Sensor Attributes — cumulative metric (FAO Evapotranspiration)
+
+The state is the daily total:
+
+```yaml
+state: 5.6             # authoritative daily total (mm/day)
+total: 5.6
+avg: 0.23              # mean of hourly values (informational)
+min: 0.0
+max: 0.6
+# date / metadata / forecast_data as above
 ```
 
 ### Example This Hour / Next Hour Sensor Attributes
@@ -150,7 +170,7 @@ This integration is perfect for:
 
 - **Garden Automation** - Use soil moisture and temperature to trigger irrigation
 - **Cloud Coverage Monitoring** - Track cloud cover for solar panel optimization
-- **Evapotranspiration Tracking** - Calculate water needs for plants
+- **Evapotranspiration Tracking** - Calculate crop water needs from daily ET totals (pairs well with irrigation controllers like HA Smart Irrigation)
 - **Weather Monitoring** - Keep tabs on detailed weather conditions
 
 ### Example Automation
@@ -160,17 +180,19 @@ automation:
   - alias: "Water Garden Based on Soil Moisture"
     trigger:
       - platform: numeric_state
-        entity_id: sensor.soil_moisture_0_1cm
+        entity_id: sensor.soil_moisture_0_1cm_this_hour
         below: 0.15
     condition:
       - condition: numeric_state
-        entity_id: sensor.evapotranspiration
+        entity_id: sensor.evapotranspiration_this_hour
         above: 0.5
     action:
       - service: switch.turn_on
         target:
           entity_id: switch.garden_irrigation
 ```
+
+Entity IDs follow `sensor.<metric>_<period>` — e.g. `sensor.evapotranspiration_this_hour`, `sensor.fao_evapotranspiration_today`, `sensor.cloud_cover_hour_5`. Confirm the exact IDs under Settings → Devices & Services → Open-Meteo CloudCover.
 
 ## Troubleshooting
 
@@ -192,7 +214,6 @@ Ensure your coordinates are valid:
 If you see API errors in the logs:
 1. Check if the Open-Meteo service is operational
 2. Verify network connectivity
-3. Consider increasing the update interval if rate limits are an issue
 
 ## Development
 
@@ -203,6 +224,7 @@ This integration follows Home Assistant's best practices:
 - Provides comprehensive device and sensor information
 - Uses async/await patterns throughout
 - Includes proper typing hints
+- Test suite (`tests/`) plus ruff lint/format checks run via GitHub Actions (`.github/workflows/`)
 
 ## Credits
 
@@ -211,8 +233,8 @@ This integration follows Home Assistant's best practices:
 
 ## License
 
-This integration is provided as-is for personal use.
+This project is licensed under the [MIT License](LICENSE).
 
 ## Support
 
-For issues or feature requests, please open an issue on the GitHub repository.
+For issues or feature requests, please open an issue on the [GitHub repository](https://github.com/madeinoz67/open-meteo-cloudcover/issues).
