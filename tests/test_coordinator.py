@@ -7,6 +7,7 @@ hourly values (which under-reports by ~24x).
 
 from __future__ import annotations
 
+import os
 from typing import Any
 
 import pytest
@@ -81,7 +82,7 @@ async def test_cumulative_falls_back_to_sum_when_daily_missing(hass) -> None:
 
 
 async def test_async_update_requests_daily_param_and_maps_total(hass) -> None:
-    """End-to-end: the request includes daily= and the total is wired through."""
+    """End-to-end: request only valid daily vars; total wired through."""
     now = dt_util.now()
     coord = OpenMeteoDataUpdateCoordinator(hass, latitude=-33.33, longitude=115.63)
 
@@ -95,7 +96,8 @@ async def test_async_update_requests_daily_param_and_maps_total(hass) -> None:
         "daily": {
             "time": [now.date().isoformat()],
             "et0_fao_evapotranspiration": [5.6],
-            "evapotranspiration": [5.0],
+            # evapotranspiration is hourly-only on Open-Meteo, so the API never
+            # returns it here — its daily total falls back to sum-of-hourly.
         },
     }
 
@@ -134,8 +136,28 @@ async def test_async_update_requests_daily_param_and_maps_total(hass) -> None:
     ):
         data = await coord._async_update_data()
 
-    # The request must ask for authoritative daily totals.
-    assert "daily" in captured["params"]
-    assert "et0_fao_evapotranspiration" in captured["params"]["daily"]
-    # And the authoritative total must be wired through to the day sensor.
+    # The request must ask ONLY for daily vars that exist on Open-Meteo.
+    # daily=evapotranspiration 400s the whole call (it's hourly-only) — see 2026.7.2.
+    assert captured["params"]["daily"] == "et0_fao_evapotranspiration"
+    # et0 uses the authoritative API total...
     assert data["et0_fao_evapotranspiration_0"]["total"] == 5.6
+    # ...while evapotranspiration (hourly-only) falls back to sum of hourly.
+    assert data["evapotranspiration_0"]["total"] == pytest.approx(2.4)
+
+
+@pytest.mark.skipif(
+    not os.environ.get("RUN_LIVE_API_TESTS"),
+    reason="hits the live Open-Meteo API; set RUN_LIVE_API_TESTS=1 to run",
+)
+async def test_async_update_against_real_api(hass) -> None:
+    """Live smoke test: the real API request must succeed (no invalid params).
+
+    Guards against requesting variables Open-Meteo rejects — e.g. requesting
+    daily=evapotranspiration 400s the entire call and breaks the integration
+    (the 2026.7.1 regression). Deselected by default; run with
+    RUN_LIVE_API_TESTS=1 pytest -k real_api
+    """
+    coord = OpenMeteoDataUpdateCoordinator(hass, latitude=-33.33, longitude=115.63)
+    data = await coord._async_update_data()  # real network call
+    assert "et0_fao_evapotranspiration_0" in data
+    assert data["et0_fao_evapotranspiration_0"]["total"] is not None

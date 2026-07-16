@@ -4,6 +4,14 @@ All notable changes to the **Open-Meteo CloudCover** Home Assistant integration
 are documented here. The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Calendar Versioning](https://calver.org/) (`YYYY.MM.PATCH`).
 
+## [2026.7.2] - 2026-07-16
+
+### Fixed
+- **Fixed a 2026.7.1 regression that broke the integration.** 2026.7.1 requested `daily=evapotranspiration`, which is not a valid Open-Meteo daily variable (it is hourly-only), so every API call returned HTTP 400 and the integration failed setup ("Error communicating with Open-Meteo API: 400"). The daily request now asks only for `et0_fao_evapotranspiration` — the one cumulative metric with a daily API form — while `evapotranspiration`'s daily total uses the sum-of-hourly fallback.
+
+### Added
+- Unit test pinning the daily request params, plus a (default-skipped, `RUN_LIVE_API_TESTS=1`) live-API smoke test to guard against invalid request params in future.
+
 ## [2026.7.1] - 2026-07-16
 
 ### Fixed

@@ -11,5 +11,5 @@
   "iot_class": "cloud_polling",
   "issue_tracker": "https://github.com/madeinoz67/open-meteo-cloudcover/issues",
   "requirements": [],
-  "version": "2026.7.1"
+  "version": "2026.7.2"
 }

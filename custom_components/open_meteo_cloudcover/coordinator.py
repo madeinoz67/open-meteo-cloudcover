@@ -18,6 +18,7 @@ from homeassistant.util import dt as dt_util
 from .const import (
     API_URL,
     CUMULATIVE_METRICS,
+    DAILY_CUMULATIVE_METRICS,
     DEFAULT_SCAN_INTERVAL,
     DOMAIN,
 )
@@ -86,9 +87,11 @@ class OpenMeteoDataUpdateCoordinator(DataUpdateCoordinator):
                     "direct_radiation",
                 ]
             ),
-            # Cumulative metrics are also requested as authoritative daily
-            # totals (issue #1): daily ET must not be derived from hourly avg.
-            "daily": ",".join(sorted(CUMULATIVE_METRICS)),
+            # Request authoritative daily totals for the cumulative metrics that
+            # have a daily API form (issue #1). Only et0_fao has one; requesting
+            # `daily=evapotranspiration` 400s the whole call (it's hourly-only),
+            # so evapotranspiration's daily total uses the sum-of-hourly fallback.
+            "daily": ",".join(sorted(DAILY_CUMULATIVE_METRICS)),
         }
 
         try:

@@ -23,6 +23,13 @@ API_URL = "https://api.open-meteo.com/v1/forecast"
 # Open-Meteo `daily=` API instead of the mean of hourly values (issue #1).
 CUMULATIVE_METRICS = frozenset({"evapotranspiration", "et0_fao_evapotranspiration"})
 
+# Subset of CUMULATIVE_METRICS that also have an authoritative daily API value.
+# Open-Meteo only offers `et0_fao_evapotranspiration` as a daily variable;
+# `evapotranspiration` is hourly-only, so its daily total is the sum of hourly
+# values (the fallback in _group_by_day). Requesting `daily=evapotranspiration`
+# makes the whole API call return HTTP 400.
+DAILY_CUMULATIVE_METRICS = frozenset({"et0_fao_evapotranspiration"})
+
 
 # Day names for forecast sensors
 def get_day_name(day_offset: int) -> str:
