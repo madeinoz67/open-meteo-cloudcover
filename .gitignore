@@ -46,3 +46,6 @@ htmlcov/
 *.log
 home-assistant.log
 home-assistant_v2.db
+
+# Superpowers specs/plans (local-only)
+docs/superpowers/
