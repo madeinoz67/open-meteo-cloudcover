@@ -19,6 +19,7 @@ from .const import (
     API_URL,
     CONF_LATITUDE,
     CONF_LONGITUDE,
+    CUMULATIVE_METRICS,
     DEFAULT_SCAN_INTERVAL,
     DOMAIN,
 )
@@ -85,6 +86,9 @@ class OpenMeteoDataUpdateCoordinator(DataUpdateCoordinator):
                 "cloud_cover_high",
                 "direct_radiation",
             ]),
+            # Cumulative metrics are also requested as authoritative daily
+            # totals (issue #1): daily ET must not be derived from hourly avg.
+            "daily": ",".join(sorted(CUMULATIVE_METRICS)),
         }
 
         try:
@@ -102,8 +106,11 @@ class OpenMeteoDataUpdateCoordinator(DataUpdateCoordinator):
                         if not times:
                             raise UpdateFailed("No data received from Open-Meteo API")
 
+                        # Authoritative daily totals for cumulative metrics
+                        daily = data.get("daily", {})
+
                         # Build sensor data grouped by day and metric
-                        sensor_data = self._group_by_day(times, hourly)
+                        sensor_data = self._group_by_day(times, hourly, daily)
 
                         # Add metadata
                         sensor_data["_metadata"] = {
@@ -120,10 +127,38 @@ class OpenMeteoDataUpdateCoordinator(DataUpdateCoordinator):
         except Exception as err:
             raise UpdateFailed(f"Unexpected error fetching data: {err}") from err
 
-    def _group_by_day(self, times: list[str], hourly: dict[str, list]) -> dict[str, Any]:
-        """Group hourly forecast data by day for each metric."""
+    def _group_by_day(
+        self,
+        times: list[str],
+        hourly: dict[str, list],
+        daily: dict[str, list] | None = None,
+    ) -> dict[str, Any]:
+        """Group hourly forecast data by day for each metric.
+
+        For cumulative metrics (see CUMULATIVE_METRICS), day-based sensors use
+        the authoritative daily total from the `daily` API response when
+        available, falling back to the sum of hourly values.
+        """
         from collections import defaultdict
         from datetime import timezone
+
+        daily = daily or {}
+
+        # Map each cumulative metric's authoritative daily total by date.
+        daily_totals: dict[str, dict[Any, float]] = {}
+        daily_times: list[Any] = []
+        for t in daily.get("time", []):
+            try:
+                daily_times.append(datetime.fromisoformat(t).date())
+            except (TypeError, ValueError):
+                daily_times.append(None)
+        for metric in CUMULATIVE_METRICS:
+            vals = daily.get(metric, [])
+            daily_totals[metric] = {
+                daily_times[i]: vals[i]
+                for i in range(min(len(daily_times), len(vals)))
+                if daily_times[i] is not None and vals[i] is not None
+            }
 
         # Get current time for finding closest hour (timezone-aware)
         now = dt_util.now()
@@ -279,7 +314,7 @@ class OpenMeteoDataUpdateCoordinator(DataUpdateCoordinator):
                     time_str = h["datetime"].strftime("%Y-%m-%dT%H:%M")
                     hourly_data[time_str] = h["value"]
 
-                sensor_data[sensor_key] = {
+                daily_entry: dict[str, Any] = {
                     "date": str(date_key),
                     "day_offset": day_offset,
                     "current": current_value,
@@ -288,6 +323,18 @@ class OpenMeteoDataUpdateCoordinator(DataUpdateCoordinator):
                     "max": round(max(values), 2) if values else None,
                     "avg": round(sum(values) / len(values), 2) if values else None,
                 }
+
+                # Cumulative metrics: authoritative daily total (issue #1),
+                # falling back to the sum of hourly values if the API omits it.
+                if metric in CUMULATIVE_METRICS:
+                    api_total = daily_totals.get(metric, {}).get(date_key)
+                    daily_entry["total"] = (
+                        api_total
+                        if api_total is not None
+                        else (round(sum(values), 2) if values else None)
+                    )
+
+                sensor_data[sensor_key] = daily_entry
 
         # Third pass: Extract hourly sensors (hours 1-24 from current time)
         # Collect all hourly values across all days for each metric

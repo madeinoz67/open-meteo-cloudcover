@@ -18,6 +18,11 @@ MAX_FORECAST_DAYS = 7
 # API
 API_URL = "https://api.open-meteo.com/v1/forecast"
 
+# Metrics whose daily value is a cumulative total (mm/day), not an average.
+# Day-based sensors for these report the authoritative daily total from the
+# Open-Meteo `daily=` API instead of the mean of hourly values (issue #1).
+CUMULATIVE_METRICS = frozenset({"evapotranspiration", "et0_fao_evapotranspiration"})
+
 # Day names for forecast sensors
 def get_day_name(day_offset: int) -> str:
     """Get friendly name for day offset."""
