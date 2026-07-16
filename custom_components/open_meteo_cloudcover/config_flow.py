@@ -1,4 +1,5 @@
 """Config flow for Open-Meteo CloudCover integration."""
+
 from __future__ import annotations
 
 import logging
@@ -7,7 +8,6 @@ from typing import Any
 import aiohttp
 import async_timeout
 import voluptuous as vol
-
 from homeassistant import config_entries
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.data_entry_flow import FlowResult
@@ -35,19 +35,21 @@ async def validate_coordinates(
     }
 
     try:
-        async with async_timeout.timeout(10):
-            async with aiohttp.ClientSession() as session:
-                async with session.get(API_URL, params=params) as response:
-                    response.raise_for_status()
-                    data = await response.json()
+        async with (
+            async_timeout.timeout(10),
+            aiohttp.ClientSession() as session,
+            session.get(API_URL, params=params) as response,
+        ):
+            response.raise_for_status()
+            data = await response.json()
 
-                    if "hourly" not in data:
-                        raise ValueError("Invalid response from API")
+            if "hourly" not in data:
+                raise ValueError("Invalid response from API")
 
-                    return True
+            return True
 
-    except aiohttp.ClientError:
-        raise CannotConnect
+    except aiohttp.ClientError as err:
+        raise CannotConnect from err
     except Exception as err:
         _LOGGER.exception("Unexpected exception: %s", err)
         raise UnknownError from err
@@ -66,9 +68,7 @@ class OpenMeteoConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         """Get the options flow for this handler."""
         return OpenMeteoOptionsFlowHandler(config_entry)
 
-    async def async_step_user(
-        self, user_input: dict[str, Any] | None = None
-    ) -> FlowResult:
+    async def async_step_user(self, user_input: dict[str, Any] | None = None) -> FlowResult:
         """Handle the initial step."""
         errors: dict[str, str] = {}
 
@@ -130,9 +130,7 @@ class OpenMeteoOptionsFlowHandler(config_entries.OptionsFlow):
         """Initialize options flow."""
         self.config_entry = config_entry
 
-    async def async_step_init(
-        self, user_input: dict[str, Any] | None = None
-    ) -> FlowResult:
+    async def async_step_init(self, user_input: dict[str, Any] | None = None) -> FlowResult:
         """Manage the options."""
         errors: dict[str, str] = {}
 

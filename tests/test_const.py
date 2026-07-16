@@ -14,9 +14,7 @@ def test_domain() -> None:
 
 def test_cumulative_metrics_are_known_sensor_types() -> None:
     """CUMULATIVE_METRICS must reference real sensor types."""
-    assert CUMULATIVE_METRICS == frozenset(
-        {"evapotranspiration", "et0_fao_evapotranspiration"}
-    )
+    assert frozenset({"evapotranspiration", "et0_fao_evapotranspiration"}) == CUMULATIVE_METRICS
     assert CUMULATIVE_METRICS.issubset(SENSOR_TYPES.keys())
 
 

@@ -1,13 +1,12 @@
 """Sensor platform for Open-Meteo CloudCover integration."""
+
 from __future__ import annotations
 
-from datetime import datetime
 import logging
 from typing import Any
 
 from homeassistant.components.sensor import (
     SensorEntity,
-    SensorStateClass,
 )
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
@@ -15,7 +14,14 @@ from homeassistant.helpers.device_registry import DeviceEntryType, DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from .const import CONF_LATITUDE, CONF_LONGITUDE, CONF_NAME, CUMULATIVE_METRICS, DEFAULT_NAME, DOMAIN, SENSOR_TYPES, get_day_name
+from .const import (
+    CONF_NAME,
+    CUMULATIVE_METRICS,
+    DEFAULT_NAME,
+    DOMAIN,
+    SENSOR_TYPES,
+    get_day_name,
+)
 from .coordinator import OpenMeteoDataUpdateCoordinator
 
 _LOGGER = logging.getLogger(__name__)

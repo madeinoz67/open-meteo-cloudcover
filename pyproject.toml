@@ -1,6 +1,6 @@
 [project]
 name = "open-meteo-cloudcover"
-version = "2025.10.4"
+version = "2026.7.1"
 description = "Home Assistant integration: cloud-cover, weather and soil sensors from the Open-Meteo API"
 readme = "README.md"
 requires-python = ">=3.12"
@@ -15,3 +15,14 @@ asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "function"
 testpaths = ["tests"]
 pythonpath = ["."]
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+extend-exclude = [".claude"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM", "C4"]
+
+[tool.ruff.lint.isort]
+combine-as-imports = true

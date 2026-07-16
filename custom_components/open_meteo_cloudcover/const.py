@@ -23,6 +23,7 @@ API_URL = "https://api.open-meteo.com/v1/forecast"
 # Open-Meteo `daily=` API instead of the mean of hourly values (issue #1).
 CUMULATIVE_METRICS = frozenset({"evapotranspiration", "et0_fao_evapotranspiration"})
 
+
 # Day names for forecast sensors
 def get_day_name(day_offset: int) -> str:
     """Get friendly name for day offset."""
@@ -32,6 +33,7 @@ def get_day_name(day_offset: int) -> str:
         return "Tomorrow"
     else:
         return f"Day {day_offset}"
+
 
 # Sensor types
 SENSOR_TYPES = {

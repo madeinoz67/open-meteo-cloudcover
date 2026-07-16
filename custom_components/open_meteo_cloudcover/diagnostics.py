@@ -1,4 +1,5 @@
 """Diagnostics support for Open-Meteo CloudCover integration."""
+
 from __future__ import annotations
 
 from typing import Any
@@ -46,7 +47,7 @@ async def async_get_config_entry_diagnostics(
             "forecast_days": coordinator.forecast_days,
         },
         "data_summary": {
-            "sensor_count": len([k for k in coordinator_data.keys() if k != "_metadata"]),
+            "sensor_count": len([k for k in coordinator_data if k != "_metadata"]),
             "metadata": {
                 "latitude": coordinator_data.get("_metadata", {}).get("latitude"),
                 "longitude": coordinator_data.get("_metadata", {}).get("longitude"),

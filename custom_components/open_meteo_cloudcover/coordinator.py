@@ -1,13 +1,13 @@
 """DataUpdateCoordinator for Open-Meteo CloudCover integration."""
+
 from __future__ import annotations
 
-from datetime import datetime, timedelta
 import logging
+from datetime import datetime, timedelta
 from typing import Any
 
 import aiohttp
 import async_timeout
-
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.update_coordinator import (
     DataUpdateCoordinator,
@@ -17,8 +17,6 @@ from homeassistant.util import dt as dt_util
 
 from .const import (
     API_URL,
-    CONF_LATITUDE,
-    CONF_LONGITUDE,
     CUMULATIVE_METRICS,
     DEFAULT_SCAN_INTERVAL,
     DOMAIN,
@@ -75,52 +73,56 @@ class OpenMeteoDataUpdateCoordinator(DataUpdateCoordinator):
             "start_date": start_date,
             "end_date": end_date,
             "timezone": timezone,  # Request data in HA timezone
-            "hourly": ",".join([
-                "evapotranspiration",
-                "soil_temperature_0cm",
-                "soil_moisture_0_to_1cm",
-                "et0_fao_evapotranspiration",
-                "cloud_cover",
-                "cloud_cover_low",
-                "cloud_cover_mid",
-                "cloud_cover_high",
-                "direct_radiation",
-            ]),
+            "hourly": ",".join(
+                [
+                    "evapotranspiration",
+                    "soil_temperature_0cm",
+                    "soil_moisture_0_to_1cm",
+                    "et0_fao_evapotranspiration",
+                    "cloud_cover",
+                    "cloud_cover_low",
+                    "cloud_cover_mid",
+                    "cloud_cover_high",
+                    "direct_radiation",
+                ]
+            ),
             # Cumulative metrics are also requested as authoritative daily
             # totals (issue #1): daily ET must not be derived from hourly avg.
             "daily": ",".join(sorted(CUMULATIVE_METRICS)),
         }
 
         try:
-            async with async_timeout.timeout(30):
-                async with aiohttp.ClientSession() as session:
-                    async with session.get(API_URL, params=params) as response:
-                        response.raise_for_status()
-                        data = await response.json()
+            async with (
+                async_timeout.timeout(30),
+                aiohttp.ClientSession() as session,
+                session.get(API_URL, params=params) as response,
+            ):
+                response.raise_for_status()
+                data = await response.json()
 
-                        # Transform the data to make it easier to work with
-                        # Group hourly forecast data by day
-                        hourly = data.get("hourly", {})
-                        times = hourly.get("time", [])
+                # Transform the data to make it easier to work with
+                # Group hourly forecast data by day
+                hourly = data.get("hourly", {})
+                times = hourly.get("time", [])
 
-                        if not times:
-                            raise UpdateFailed("No data received from Open-Meteo API")
+                if not times:
+                    raise UpdateFailed("No data received from Open-Meteo API")
 
-                        # Authoritative daily totals for cumulative metrics
-                        daily = data.get("daily", {})
+                # Authoritative daily totals for cumulative metrics
+                daily = data.get("daily", {})
 
-                        # Build sensor data grouped by day and metric
-                        sensor_data = self._group_by_day(times, hourly, daily)
+                # Build sensor data grouped by day and metric
+                sensor_data = self._group_by_day(times, hourly, daily)
 
-                        # Add metadata
-                        sensor_data["_metadata"] = {
-                            "latitude": data.get("latitude"),
-                            "longitude": data.get("longitude"),
-                            "timezone": data.get("timezone"),
-                            "elevation": data.get("elevation"),
-                        }
+                # Add metadata
+                sensor_data["_metadata"] = {
+                    "latitude": data.get("latitude"),
+                    "longitude": data.get("longitude"),
+                    "timezone": data.get("timezone"),
+                    "elevation": data.get("elevation"),
+                }
 
-                        return sensor_data
+                return sensor_data
 
         except aiohttp.ClientError as err:
             raise UpdateFailed(f"Error communicating with Open-Meteo API: {err}") from err
@@ -140,7 +142,6 @@ class OpenMeteoDataUpdateCoordinator(DataUpdateCoordinator):
         available, falling back to the sum of hourly values.
         """
         from collections import defaultdict
-        from datetime import timezone
 
         daily = daily or {}
 
@@ -199,11 +200,13 @@ class OpenMeteoDataUpdateCoordinator(DataUpdateCoordinator):
             ]:
                 values = hourly.get(metric, [])
                 if idx < len(values) and values[idx] is not None:
-                    daily_data[date_key][metric].append({
-                        "time": time_str,
-                        "value": values[idx],
-                        "datetime": dt,
-                    })
+                    daily_data[date_key][metric].append(
+                        {
+                            "time": time_str,
+                            "value": values[idx],
+                            "datetime": dt,
+                        }
+                    )
 
         # Calculate daily aggregates and assign day offsets
         sensor_data = {}
@@ -242,6 +245,7 @@ class OpenMeteoDataUpdateCoordinator(DataUpdateCoordinator):
             # Get the current hour and next hour boundaries
             current_hour = now.replace(minute=0, second=0, microsecond=0)
             from datetime import timedelta
+
             next_hour_boundary = current_hour + timedelta(hours=1)
 
             for h in all_hourly_values:

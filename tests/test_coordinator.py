@@ -10,11 +10,11 @@ from __future__ import annotations
 from typing import Any
 
 import pytest
+from homeassistant.util import dt as dt_util
 
 from custom_components.open_meteo_cloudcover.coordinator import (
     OpenMeteoDataUpdateCoordinator,
 )
-from homeassistant.util import dt as dt_util
 
 
 def _today_hourly_times(now: Any) -> list[str]:
@@ -102,7 +102,7 @@ async def test_async_update_requests_daily_param_and_maps_total(hass) -> None:
     captured: dict[str, Any] = {}
 
     class _Response:
-        async def __aenter__(self) -> "_Response":
+        async def __aenter__(self) -> _Response:
             return self
 
         async def __aexit__(self, *exc: object) -> bool:
@@ -115,7 +115,7 @@ async def test_async_update_requests_daily_param_and_maps_total(hass) -> None:
             return payload
 
     class _Session:
-        async def __aenter__(self) -> "_Session":
+        async def __aenter__(self) -> _Session:
             return self
 
         async def __aexit__(self, *exc: object) -> bool:
